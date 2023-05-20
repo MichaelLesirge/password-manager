@@ -39,7 +39,7 @@ def decrypt_str(encrypted_data: bytes, key: bytes) -> str:
     return Fernet(key).decrypt(encrypted_data).decode()
 
 def encrypt_json(obj: dict, key: bytes) -> bytes:
-   return encrypt_str(json.dumps(data), key)
+   return encrypt_str(json.dumps(obj), key)
 
 def decrypt_json(encrypted_obj: bytes, key: bytes) -> dict:
     return json.loads(decrypt_str(encrypted_obj, key))
@@ -48,7 +48,8 @@ def sinput(prompt = "", trail = ": ") -> str:
     return input(prompt + trail).strip()
 
 def sprint(text = "", trail = ".") -> str:
-    print(text.capitalize() + trail)
+    if text: text = text[0].upper() + text[1:]
+    print(text + trail if len(text) > 1 else "")
 
 def bool_input(prompt = "") -> bool:
     return sinput(prompt + " [y/n]").lower() == "y"
@@ -73,13 +74,11 @@ class PasscodeManager:
         self.has_unsaved_data = False
 
     def _get(self, item_name: str) -> tuple[str, str]:
-        username, encrypted_passcode, password_salt = self.passcode_data[item_name]
+        username, encrypted_passcode = self.passcode_data[item_name]
         return username, decrypt_str(base64.urlsafe_b64decode(encrypted_passcode), self.key)
     
     def _set(self, item_name: str, username: str, passcode: str) -> None:
-        self.passcode_data[item_name] = (
-            username,
-            base64.urlsafe_b64encode(encrypt_str(passcode, self.key)).decode())
+        self.passcode_data[item_name] = (username, base64.urlsafe_b64encode(encrypt_str(passcode, self.key)).decode())
         self.has_unsaved_data = self.has_updated_data = True
 
     def has_item(self, item_name: str) -> bool:
@@ -112,6 +111,7 @@ class PasscodeManager:
 def main(): 
     # file_salt = get_new_salt()
     file_salt = b'\xbeZ/\xa0S\xed\xf97\xc8\xf1e\xa32_\xbc|'
+    passcode_salt = b'\xbeZ/\xa0S\xed\xf97\xc8\xf1e\xa32_\xbc|'
     
     try:
         with open(Config.FILENAME, "rb") as file:
@@ -126,7 +126,8 @@ def main():
         try:
             passcode = getpass.getpass()
             file_key = generate_key(passcode, file_salt)
-            decrypted_data = decrypt_json(encrypted_file_contents, file_key)
+            passcode_key = generate_key(passcode, passcode_salt)
+            decrypted_data = {} if encrypted_file_contents is None else decrypt_json(encrypted_file_contents, file_key)
         except fernet.InvalidToken:
             sprint("incorrect Password")
             wrong_count += 1
@@ -151,9 +152,9 @@ def main():
     def save_data():
         decrypted_data["last-write"] = proggram_start_time.timestamp()
         with open(Config.FILENAME, "wb") as file:
-            file.write(encrypt_json(decrypted_data, Config.FILENAME, file_key))
+            file.write(encrypt_json(decrypted_data, file_key))
         
-    passcode_manager = PasscodeManager(passcode_data, file_key, save_data)
+    passcode_manager = PasscodeManager(passcode_data, passcode_key, save_data)
     
     decrypted_data["last-access"] = proggram_start_time.timestamp()
 
@@ -170,22 +171,26 @@ def main():
         
         if action == "s":
             if passcode_manager.has_unsaved_data:
-                sprint(f"no data{' new' if passcode_manager.has_updated_data else ''} to save")
-            else:     
-                success = passcode_manager.save()
-                if success:
-                    sprint("successfully saved to file")
+                try:
+                    passcode_manager.save()
+                except Exception:
+                    sprint("could not save due to an error")
                 else:
-                    sprint("could not write to file due to an error")
+                    sprint("successfully saved data")
+                    
+            else:     
+                sprint(f"no data{' new' if passcode_manager.has_updated_data else ''} to save")
             
         elif action == "q":
             if passcode_manager.has_unsaved_data and not bool_input("You have unsaved data, would you like to save it before you quit"):
-                success = passcode_manager.save()
-                if success:
-                    sprint("successfully saved to file")
+                try:
+                    passcode_manager.save()
+                except Exception:
+                    sprint("could not save due to an Error")
                 else:
-                    sprint("could not write to file due to an error")
-
+                    sprint("successfully saved data")
+                    
+                
             sprint("quitting")
             going = False
                 
