@@ -10,6 +10,8 @@ import getpass
 import random
 import string
 
+# Todo: hide bin data in image file
+
 class Config:
     FILENAME = "pry-pass-bin.bin"
     DATE_FORMAT = '%a %b %d %Y at %I:%M:%S %p'
