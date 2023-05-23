@@ -1,9 +1,9 @@
 # thanks Computerphile. https://youtu.be/TWEXCYQKyDc
 
 class Config:
-    STOP_CODE = b'\0'
+    STOP_CODE = b'\0\0\0'
 
-def to_binary(data: bytes | int) -> str:
+def to_binary(data: bytes) -> str:
     return "".join(format(i, "08b") for i in data)
 
 def get_png_body_position(image: bytes) -> tuple[int, int]:
@@ -36,34 +36,40 @@ def encode(base_png_image: bytes, secret_data: bytes) -> bytes:
         
     return bytes(image)
 
+
 def decode(encoded_image: bytes) -> bytes:
     image = bytearray(encoded_image)
     
     start_index, end_index = get_png_body_position(image)
-    secret_data_binary = ""
+    byte_array = bytearray()
+    stop_code = bytearray(Config.STOP_CODE)
     
     # make bytes created here and end scan as soon as stop byte is found 
-    zero_checker = 0
-    for i in range(end_index, start_index, -1):
-        bit = image[i] & 0b00000001
-        secret_data_binary += str(bit)
+    for byte_index in range(end_index, start_index, -8):
+        byte = 0 
+        for bit_index in range(byte_index, byte_index-8, -1):
+            bit = image[bit_index] & 0b00000001
+            byte = (byte << 1) | bit
+        if byte_array[-len(stop_code):] == stop_code: break
+        byte_array.append(byte)
+    else:
+        raise Exception("No stop byte found")
+    
+    return bytes(byte_array)[1:-len(stop_code)]
+ 
+def main() -> None:        
+    # with open("image.png", "rb") as file:
+    #     image = file.read()
+     
+    # new_image = encode(image, b'Super secret code')
+
+    # with open("image2.png", "wb") as file:
+    #     file.write(new_image)
         
-    secret_data = bytes([int(secret_data_binary[i:i-8], 2) for i in range(0, len(secret_data_binary), 8)])
-    
-    if secret_data.endswith(Config.STOP_CODE):
-        secret_data = secret_data[:-len(Config.STOP_CODE)]
-    
-    return secret_data
+    with open("image2.png", "rb") as file:
+        image = file.read()
 
-# with open("image.png", "rb") as file:
-#     image = file.read()
-    
-# new_image = encode(image, b'Hello World')
+    print(decode(image))
 
-# with open("image2.png", "wb") as file:
-#     file.write(new_image)
-    
-with open("image2.png", "rb") as file:
-    image = file.read()
-
-print(decode(image))
+if __name__ == "__main__":
+    main()
