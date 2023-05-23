@@ -1,7 +1,7 @@
-import base64
 import random
 
 from encryption import decrypt_str, encrypt_str
+
 
 def char_range(start_char: str, end_char: str) -> str:
     return "".join(chr(i) for i in range(ord(start_char), ord(end_char)+1))
@@ -27,10 +27,10 @@ class PasscodeManager:
 
     def _get(self, item_name: str) -> tuple[str, str]:
         username, encrypted_passcode = self.passcode_data[item_name]
-        return username, decrypt_str(base64.urlsafe_b64decode(encrypted_passcode), self.key)
+        return username, decrypt_str(encrypted_passcode, self.key)
     
     def _set(self, item_name: str, username: str, passcode: str) -> None:
-        self.passcode_data[item_name] = (username, base64.urlsafe_b64encode(encrypt_str(passcode, self.key)).decode())
+        self.passcode_data[item_name] = (username, encrypt_str(passcode, self.key))
         self.has_unsaved_data = self.has_updated_data = True
 
     def has_item(self, item_name: str) -> bool:

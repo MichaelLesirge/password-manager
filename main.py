@@ -1,9 +1,7 @@
 import datetime
 import getpass
 
-from cryptography import fernet
-
-from encryption import decrypt_dict, encrypt_dict, generate_key
+from encryption import WrongPasscodeExeption, decrypt_dict, encrypt_dict, generate_key
 from password_manager import PasscodeManager
 
 # Todo: hide bin data in image file
@@ -48,7 +46,7 @@ def main():
             file_key = generate_key(passcode, file_salt)
             passcode_key = generate_key(passcode, passcode_salt)
             decrypted_data = {} if encrypted_file_contents is None else decrypt_dict(encrypted_file_contents, file_key)
-        except fernet.InvalidToken:
+        except WrongPasscodeExeption:
             sprint("incorrect Password")
             wrong_count += 1
             
@@ -122,8 +120,8 @@ def main():
             title = sinput("Item name")
             if passcode_manager.has_item(title):
                 username, passcode = passcode_manager.read(title)
-                sprint(f"username: {username}")
-                sprint(f"password: {passcode}")
+                sprint(f"username: {username}", trail="")
+                sprint(f"password: {passcode}", trail="")
             else:
                 sprint("item does not exist")
                             
