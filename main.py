@@ -1,14 +1,10 @@
-import base64
-import os
-from cryptography import fernet
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import datetime
-import json
 import getpass
-import random
-import string
+
+from cryptography import fernet
+
+from encryption import decrypt_dict, encrypt_dict, generate_key
+from password_manager import PasscodeManager
 
 # Todo: hide bin data in image file
 
@@ -17,34 +13,10 @@ class Config:
     DATE_FORMAT = '%a %b %d %Y at %I:%M:%S %p'
     PASSWORD_GUESS_MAX_ATTEMPTS = 3
     
-    GENORATED_PASSWORD_LENGTH = 21
     GENORATED_PASSWORD_LENGTH_VARIATION = 3
+    GENORATED_PASSWORD_LENGTH = 21
+    
     MAX_SESSION_LENGTH = datetime.timedelta(minutes=2)
-
-def get_new_salt() -> bytes:
-    return os.urandom(16)
-
-def generate_key(passcode: str, salt: bytes) -> bytes:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=480000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(passcode.encode()))
-    return key
-
-def encrypt_str(data: str, key: bytes) -> bytes:
-    return Fernet(key).encrypt(data.encode())
-
-def decrypt_str(encrypted_data: bytes, key: bytes) -> str:
-    return Fernet(key).decrypt(encrypted_data).decode()
-
-def encrypt_json(obj: dict, key: bytes) -> bytes:
-   return encrypt_str(json.dumps(obj), key)
-
-def decrypt_json(encrypted_obj: bytes, key: bytes) -> dict:
-    return json.loads(decrypt_str(encrypted_obj, key))
 
 def sinput(prompt = "", trail = ": ") -> str:
     return input(prompt + trail).strip()
@@ -56,62 +28,8 @@ def sprint(text = "", trail = ".") -> str:
 def bool_input(prompt = "") -> bool:
     return sinput(prompt + " [y/n]").lower() == "y"
 
-class PasscodeManager:
-    def __init__(self, passcode_data: dict, key: bytes, saver: callable) -> None:
-        if passcode_data is None:
-            passcode_data = {}
-        
-        self.passcode_data = passcode_data
-
-        self.has_unsaved_data = False
-        self.has_updated_data = False
-        
-        self.key = key
-        
-        self.saver = saver
-    
-    def save(self) -> bool:
-        if not self.has_unsaved_data: return
-        self.saver()
-        self.has_unsaved_data = False
-
-    def _get(self, item_name: str) -> tuple[str, str]:
-        username, encrypted_passcode = self.passcode_data[item_name]
-        return username, decrypt_str(base64.urlsafe_b64decode(encrypted_passcode), self.key)
-    
-    def _set(self, item_name: str, username: str, passcode: str) -> None:
-        self.passcode_data[item_name] = (username, base64.urlsafe_b64encode(encrypt_str(passcode, self.key)).decode())
-        self.has_unsaved_data = self.has_updated_data = True
-
-    def has_item(self, item_name: str) -> bool:
-        return item_name in self.passcode_data
-    
-    def create(self, item_name: str, username: str, passcode: str) -> bool:     
-        self._set(item_name, username, passcode)
-    
-    def read(self, item_name: str) -> tuple[str, str]:
-        return self._get(item_name)
-    
-    def update(self, item_name: str, username: str, passcode: str) -> bool:
-        old_username, old_password = self.read(item_name)
-        if username is None: username = old_username
-        if passcode is None: passcode = old_password
-        self._set(item_name, username, passcode)
-    
-    def delete(self, item_name: str) -> None:
-        del self.passcode_data[item_name]
-        self.has_unsaved_data = self.has_updated_data = True
-    
-    def get_item_names(self) -> list[str]:
-        return list(self.passcode_data.keys())
-    
-    def genorate_random_password(self, length = 16):
-        actionacters = string.ascii_letters + string.digits + string.punctuation
-        password = ''.join(random.choice(actionacters) for _ in range(length))
-        return password
                 
 def main(): 
-    # file_salt = get_new_salt()
     file_salt = b'\xbeZ/\xa0S\xed\xf97\xc8\xf1e\xa32_\xbc|'
     passcode_salt = b'\xbeZ/\xa0S\xed\xf97\xc8\xf1e\xa32_\xbc|'
     
@@ -129,7 +47,7 @@ def main():
             passcode = getpass.getpass()
             file_key = generate_key(passcode, file_salt)
             passcode_key = generate_key(passcode, passcode_salt)
-            decrypted_data = {} if encrypted_file_contents is None else decrypt_json(encrypted_file_contents, file_key)
+            decrypted_data = {} if encrypted_file_contents is None else decrypt_dict(encrypted_file_contents, file_key)
         except fernet.InvalidToken:
             sprint("incorrect Password")
             wrong_count += 1
@@ -154,7 +72,7 @@ def main():
     def save_data():
         decrypted_data["last-write"] = proggram_start_time.timestamp()
         with open(Config.FILENAME, "wb") as file:
-            file.write(encrypt_json(decrypted_data, file_key))
+            file.write(encrypt_dict(decrypted_data, file_key))
         
     passcode_manager = PasscodeManager(passcode_data, passcode_key, save_data)
     
@@ -173,32 +91,19 @@ def main():
         
         if action == "s":
             if passcode_manager.has_unsaved_data:
-                try:
-                    passcode_manager.save()
-                except Exception:
-                    sprint("could not save due to an error")
-                else:
-                    sprint("successfully saved data")
-                    
+                passcode_manager.save()         
             else:     
                 sprint(f"no data{' new' if passcode_manager.has_updated_data else ''} to save")
             
         elif action == "q":
             if passcode_manager.has_unsaved_data and not bool_input("You have unsaved data, would you like to save it before you quit"):
-                try:
-                    passcode_manager.save()
-                except Exception:
-                    sprint("could not save due to an Error")
-                else:
-                    sprint("successfully saved data")
-                    
+                passcode_manager.save()         
                 
             sprint("quitting")
             going = False
                 
         elif action == "m":
-            passcode_length = Config.GENORATED_PASSWORD_LENGTH + random.randint(-Config.GENORATED_PASSWORD_LENGTH_VARIATION, Config.GENORATED_PASSWORD_LENGTH_VARIATION)
-            sprint(passcode_manager.genorate_random_password(passcode_length))
+            sprint(passcode_manager.genorate_random_password(Config.GENORATED_PASSWORD_LENGTH, Config.GENORATED_PASSWORD_LENGTH_VARIATION))
             
         elif action == "l":
             sprint(f"saved item names: {', '.join(passcode_manager.get_item_names())}")
