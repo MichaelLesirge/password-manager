@@ -1,7 +1,7 @@
 # thanks Computerphile. https://youtu.be/TWEXCYQKyDc
 
 class Config:
-    STOP_CODE = b'\0\0\0'
+    STOP_CODE = b'[\0THIS\0IS\0THE\0END\0]'
 
 def to_binary(data: bytes) -> str:
     return "".join(format(i, "08b") for i in data)
@@ -58,13 +58,13 @@ def decode(encoded_image: bytes) -> bytes:
     return bytes(byte_array)[1:-len(stop_code)]
  
 def main() -> None:        
-    # with open("image.png", "rb") as file:
-    #     image = file.read()
+    with open("image.png", "rb") as file:
+        image = file.read()
      
-    # new_image = encode(image, b'Super secret code')
+    new_image = encode(image, b'Super secret code')
 
-    # with open("image2.png", "wb") as file:
-    #     file.write(new_image)
+    with open("image2.png", "wb") as file:
+        file.write(new_image)
         
     with open("image2.png", "rb") as file:
         image = file.read()
