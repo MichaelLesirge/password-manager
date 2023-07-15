@@ -37,6 +37,7 @@ def encode_image(base_png_image: bytes, secret_data: bytes) -> bytes:
 
     for i, bit in enumerate(secret_data_binary):
         byte_index = end_index - i - 8
+        # set last bit of byte to bit
         image[byte_index] = (image[byte_index] & 0b11111110) | int(bit, base=2)
 
     return bytes(image)
@@ -49,11 +50,12 @@ def decode_image(encoded_image: bytes) -> bytes:
     byte_array = bytearray()
     stop_code = bytearray(Config.STOP_CODE)
 
-    # make bytes created here and end scan as soon as stop byte is found
     for byte_index in range(end_index, start_index, -8):
         byte = 0
         for bit_index in range(byte_index, byte_index-8, -1):
+            # get last bit of byte by setting all other values to zero except last tone
             bit = image[bit_index] & 0b00000001
+            # shift found byte left by one to make room for new bit on end. works since only end bit could be on in "bit"
             byte = (byte << 1) | bit
         if byte_array[-len(stop_code):] == stop_code:
             break
