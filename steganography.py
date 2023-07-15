@@ -1,7 +1,8 @@
-# thanks Computerphile. https://youtu.be/TWEXCYQKyDc
+# Thanks Computerphile. https://youtu.be/TWEXCYQKyDc
 
 class Config:
-    STOP_CODE = b'[\0THIS\0IS\0THE\0END\0]'
+    # TODO check file for any stop codes that might appear in it and change them or change stop code
+    STOP_CODE = b''
 
 
 def to_binary(data: bytes) -> str:
@@ -64,6 +65,8 @@ def decode_image(encoded_image: bytes) -> bytes:
 
 
 def main() -> None:
+    # TODO add subtracted image difference (Like shown in video)
+    
     with open("steganography_images/example_starting_image.png", "rb") as file:
         image = file.read()
 

@@ -7,7 +7,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-class WrongPasscodeExeption(fernet.InvalidToken): pass
+class WrongPasscodeException(fernet.InvalidToken): pass
 
 def get_new_salt() -> bytes:
     return os.urandom(16)

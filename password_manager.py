@@ -69,7 +69,7 @@ class PasscodeManager:
     def get_item_names(self) -> list[str]:
         return list(self.passcode_data.keys())
 
-    def genorate_random_password(self, length=16, length_variation=0):
+    def generate_random_password(self, length=16, length_variation=0):
         length += random.randint(-length_variation, +length_variation)
         chars = char_range("a", "z") + char_range("A", "Z") + char_range("0", "9") + "!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'"
         password = ''.join(random.choice(chars) for _ in range(length))

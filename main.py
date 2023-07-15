@@ -1,8 +1,8 @@
 import datetime
 import getpass
 
-from encryption import WrongPasscodeExeption, decrypt_dict, encrypt_dict, generate_key
-from password_manager import PasscodeManager, ItemDoesNotExistsError, ItemExistsError
+from encryption import WrongPasscodeException, decrypt_dict, encrypt_dict, generate_key
+from password_manager import PasscodeManager
 from steganography import decode_image, encode_image
 
 
@@ -17,23 +17,23 @@ class Config:
     DATE_FORMAT = '%a %b %d %Y at %I:%M:%S %p'
     PASSWORD_GUESS_MAX_ATTEMPTS = 3
 
-    GENORATED_PASSWORD_LENGTH_VARIATION = 3
-    GENORATED_PASSWORD_LENGTH = 21
+    GENERATED_PASSWORD_LENGTH_VARIATION = 3
+    GENERATED_PASSWORD_LENGTH = 21
 
     MAX_SESSION_LENGTH = datetime.timedelta(minutes=2)
 
 
-def simple_capitalise(text: str) -> str:
+def simple_capitalize(text: str) -> str:
     if text: text = text[0].upper() + text[1:]
     return text
 
 
 def sinput(prompt="", trail=": ") -> str:
-    return input(simple_capitalise(prompt) + trail).strip()
+    return input(simple_capitalize(prompt) + trail).strip()
 
 
 def sprint(text="", trail=".") -> str:
-    print(simple_capitalise(text) + (trail if len(text) > 1 else ""))
+    print(simple_capitalize(text) + (trail if len(text) > 1 else ""))
 
 
 def bool_input(prompt="") -> bool:  
@@ -65,7 +65,7 @@ def main():
             passcode_key = generate_key(passcode, passcode_salt)
             decrypted_data = {} if encrypted_file_contents is None else decrypt_dict(
                 encrypted_file_contents, file_key)
-        except WrongPasscodeExeption:
+        except WrongPasscodeException:
             sprint("incorrect password")
             wrong_count += 1
 
@@ -73,7 +73,7 @@ def main():
         sprint("failed to enter correct password too many times")
         return
 
-    proggram_start_time = datetime.datetime.now()
+    program_start_time = datetime.datetime.now()
 
     last_access = datetime.datetime.fromtimestamp(decrypted_data.setdefault("last-access", 0))
     sprint(f"last access started at {last_access.strftime(Config.DATE_FORMAT)}")
@@ -86,7 +86,7 @@ def main():
     going = True
 
     def save_data():
-        decrypted_data["last-write"] = proggram_start_time.timestamp()
+        decrypted_data["last-write"] = program_start_time.timestamp()
         encrypted_data = encrypt_dict(decrypted_data, file_key)
 
         if Config.SHOULD_USE_STEGANOGRAPHY:
@@ -100,9 +100,9 @@ def main():
 
     passcode_manager = PasscodeManager(passcode_data, passcode_key, save_data)
 
-    decrypted_data["last-access"] = proggram_start_time.timestamp()
+    decrypted_data["last-access"] = program_start_time.timestamp()
 
-    end_time = proggram_start_time + Config.MAX_SESSION_LENGTH
+    end_time = program_start_time + Config.MAX_SESSION_LENGTH
 
     sprint()
     # Todo, make more like CLI than choose your own adventure
@@ -110,7 +110,7 @@ def main():
         action = sinput("action").lower()
 
         if datetime.datetime.now() > end_time:
-            sprint("session has exspired")
+            sprint("session has expired")
             action = "q"
 
         if action == "s":
@@ -129,14 +129,14 @@ def main():
             going = False
 
         elif action == "m":
-            sprint(passcode_manager.genorate_random_password(Config.GENORATED_PASSWORD_LENGTH, Config.GENORATED_PASSWORD_LENGTH_VARIATION))
+            sprint(passcode_manager.generate_random_password(Config.GENERATED_PASSWORD_LENGTH, Config.GENERATED_PASSWORD_LENGTH_VARIATION))
 
         elif action == "l":
             saved_items = passcode_manager.get_item_names()
             if saved_items:
                 sprint(f"saved item names: {', '.join(saved_items)}")
             else:
-                sprint("no curretly saved items")
+                sprint("no currently saved items")
 
         elif action == "c":
             title = sinput("Item name")
