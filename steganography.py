@@ -9,15 +9,19 @@ def to_binary(data: bytes) -> str:
     return "".join(format(i, "08b") for i in data)
 
 
+class InvalidPNGFile(Exception):
+    pass
+
+
 def get_png_body_position(image: bytes) -> tuple[int, int]:
     try:
         png_body_start = image.index(b'IDAT') + 4
     except:
-        raise Exception("Invalid PNG file. Unable to find IDAT marker.")
+        raise InvalidPNGFile("Invalid PNG file. Unable to find IDAT marker.")
 
     try:
         png_body_end = image.index(b'IEND')
-    except ValueError:
+    except InvalidPNGFile:
         raise Exception("Invalid PNG file. Unable to find IEND marker.")
 
     return png_body_start, png_body_end
@@ -68,7 +72,7 @@ def decode_image(encoded_image: bytes) -> bytes:
 
 def main() -> None:
     # TODO add subtracted image difference (Like shown in video)
-    
+
     with open("steganography_images/example_starting_image.png", "rb") as file:
         image = file.read()
 
