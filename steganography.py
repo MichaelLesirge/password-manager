@@ -1,58 +1,61 @@
 # Thanks Computerphile. https://youtu.be/TWEXCYQKyDc
 
-class Config:
-    # TODO check file for any stop codes that might appear in it and change them or change stop code
+class Constants:
     STOP_CODE = b'\x98\xc7\x9f\x83\xd2\xa8D\x88\xf0\xfd\xcd\xb3\r\xb5\x96\xf9'
+    INDEX_GENERATION_CODE = b'\xc6(\x92\x94ms \x8a-\x0e\xe7\x96!@_\xe3'
 
 
 def to_binary(data: bytes) -> str:
     return "".join(format(i, "08b") for i in data)
 
 
-class InvalidPNGFile(Exception):
+class InvalidPNGFile(ValueError):
     pass
 
 
 def get_png_body_position(image: bytes) -> tuple[int, int]:
     try:
         png_body_start = image.index(b'IDAT') + 4
-    except:
-        raise InvalidPNGFile("Invalid PNG file. Unable to find IDAT marker.")
-
-    try:
         png_body_end = image.index(b'IEND')
-    except InvalidPNGFile:
-        raise Exception("Invalid PNG file. Unable to find IEND marker.")
+    except ValueError as e:
+        raise InvalidPNGFile("Invalid PNG file. Unable to find marker.") from e
 
     return png_body_start, png_body_end
 
 
-def encode_image(base_png_image: bytes, secret_data: bytes) -> bytes:
+def get_data_indexes(number_of_items: int, max_index: int, generation_code: bytes) -> list[int]:
+    if number_of_items > max_index: raise ValueError("max index is to low to store all bytes")
+    """evenly spread indexes for each item so all data is not clumped at start of imag"""
+      
+
+def encode_image(base_png_image: bytes, secret_data: bytes, stop_code: bytes = b"###STOP###") -> bytes:
+    # TODO check file for any stop codes that might appear in it and change them or change stop code
+    
     image = bytearray(base_png_image)
 
-    secret_data_binary = to_binary(secret_data + Config.STOP_CODE)
+    secret_data_binary = to_binary(secret_data + stop_code)
 
     start_index, end_index = get_png_body_position(image)
 
-    free_bytes = (end_index-start_index-len(to_binary(Config.STOP_CODE))) // 8
+    free_bytes = (end_index-start_index-len(to_binary(stop_code))) // 8
     if len(secret_data_binary) > free_bytes:
-        raise Exception(
+        raise ValueError(
             f"Need bigger image to store all data. Currently have {free_bytes} free bytes,")
 
     for i, bit in enumerate(secret_data_binary):
         byte_index = end_index - i - 8
-        # set last bit of byte to bit
+        # set last bit of byte to bit by setting last bit of image byte to zero then doing or with the bit
         image[byte_index] = (image[byte_index] & 0b11111110) | int(bit, base=2)
 
     return bytes(image)
 
 
-def decode_image(encoded_image: bytes) -> bytes:
+def decode_image(encoded_image: bytes, stop_code: bytes = b"#-#STOP#-#") -> bytes:
     image = bytearray(encoded_image)
 
     start_index, end_index = get_png_body_position(image)
     byte_array = bytearray()
-    stop_code = bytearray(Config.STOP_CODE)
+    stop_code_array = bytearray(stop_code)
 
     for byte_index in range(end_index, start_index, -8):
         byte = 0
@@ -61,13 +64,13 @@ def decode_image(encoded_image: bytes) -> bytes:
             bit = image[bit_index] & 0b00000001
             # shift found byte left by one to make room for new bit on end. works since only end bit could be on in "bit"
             byte = (byte << 1) | bit
-        if byte_array[-len(stop_code):] == stop_code:
+        if byte_array[-len(stop_code_array):] == stop_code_array:
             break
         byte_array.append(byte)
     else:
         raise Exception("No stop byte found")
 
-    return bytes(byte_array)[1:-len(stop_code)]
+    return bytes(byte_array)[1:-len(stop_code_array)]
 
 
 def main() -> None:
@@ -77,9 +80,9 @@ def main() -> None:
         image = file.read()
 
     in_string = "Super secret code"
-    encoded_image = encode_image(image, in_string.encode())
+    encoded_image = encode_image(image, in_string.encode(), Constants.STOP_CODE)
 
-    out_string = decode_image(encoded_image).decode()
+    out_string = decode_image(encoded_image, Constants.STOP_CODE).decode()
 
     # assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
 
@@ -87,4 +90,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    """main()"""
