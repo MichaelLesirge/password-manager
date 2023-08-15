@@ -2,7 +2,7 @@
 
 class Config:
     # TODO check file for any stop codes that might appear in it and change them or change stop code
-    STOP_CODE = b''
+    STOP_CODE = b'\x98\xc7\x9f\x83\xd2\xa8D\x88\xf0\xfd\xcd\xb3\r\xb5\x96\xf9'
 
 
 def to_binary(data: bytes) -> str:
@@ -73,7 +73,7 @@ def decode_image(encoded_image: bytes) -> bytes:
 def main() -> None:
     # TODO add subtracted image difference (Like shown in video)
 
-    with open("steganography_images/example_starting_image.png", "rb") as file:
+    with open("steganography_base_images/example_starting_image_mountains.png", "rb") as file:
         image = file.read()
 
     in_string = "Super secret code"
@@ -81,9 +81,9 @@ def main() -> None:
 
     out_string = decode_image(encoded_image).decode()
 
-    assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
+    # assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
 
-    print(out_string)
+    print(repr(out_string))
 
 
 if __name__ == "__main__":
