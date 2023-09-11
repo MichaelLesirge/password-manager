@@ -2,8 +2,6 @@
 
 class Constants:
     STOP_CODE = b'\x98\xc7\x9f\x83\xd2\xa8D\x88\xf0\xfd\xcd\xb3\r\xb5\x96\xf9'
-    INDEX_GENERATION_CODE = b'\xc6(\x92\x94ms \x8a-\x0e\xe7\x96!@_\xe3'
-
 
 def to_binary(data: bytes) -> str:
     return "".join(format(i, "08b") for i in data)
@@ -22,11 +20,6 @@ def get_png_body_position(image: bytes) -> tuple[int, int]:
 
     return png_body_start, png_body_end
 
-
-def get_data_indexes(number_of_items: int, max_index: int, generation_code: bytes) -> list[int]:
-    if number_of_items > max_index: raise ValueError("max index is to low to store all bytes")
-    """evenly spread indexes for each item so all data is not clumped at start of imag"""
-      
 
 def encode_image(base_png_image: bytes, secret_data: bytes, stop_code: bytes = b"###STOP###") -> bytes:
     # TODO check file for any stop codes that might appear in it and change them or change stop code
@@ -50,7 +43,7 @@ def encode_image(base_png_image: bytes, secret_data: bytes, stop_code: bytes = b
     return bytes(image)
 
 
-def decode_image(encoded_image: bytes, stop_code: bytes = b"#-#STOP#-#") -> bytes:
+def decode_image(encoded_image: bytes, stop_code: bytes = b"###STOP###") -> bytes:
     image = bytearray(encoded_image)
 
     start_index, end_index = get_png_body_position(image)
@@ -76,7 +69,7 @@ def decode_image(encoded_image: bytes, stop_code: bytes = b"#-#STOP#-#") -> byte
 def main() -> None:
     # TODO add subtracted image difference (Like shown in video)
 
-    with open("steganography_base_images/example_starting_image_mountains.png", "rb") as file:
+    with open("steganography_base_images/mountains.png", "rb") as file:
         image = file.read()
 
     in_string = "Super secret code"
@@ -84,10 +77,10 @@ def main() -> None:
 
     out_string = decode_image(encoded_image, Constants.STOP_CODE).decode()
 
-    # assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
+    assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
 
     print(repr(out_string))
 
 
 if __name__ == "__main__":
-    """main()"""
+    main()

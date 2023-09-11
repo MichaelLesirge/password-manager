@@ -12,6 +12,7 @@ class WrongPasscodeException(fernet.InvalidToken): pass
 def get_new_salt() -> bytes:
     return os.urandom(16)
 
+"""At some point I want to try and implement some sort of actually semi secure encryption myself but for now I am justing using this"""
 
 def generate_key(passcode: str, salt: bytes) -> bytes:
     kdf = PBKDF2HMAC(
@@ -51,7 +52,7 @@ def main():
 
     assert in_string == out_string, f"In and out strings not equal, {in_string=}, {out_string=}"
 
-    print(f"{in_string} => {encrypted_string} =>{out_string}")
+    print(f"{in_string} => {encrypted_string} => {out_string}")
 
 
 if __name__ == "__main__":

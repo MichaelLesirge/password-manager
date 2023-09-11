@@ -3,7 +3,7 @@ import getpass
 
 from encryption import WrongPasscodeException, decrypt_dict, encrypt_dict, generate_key
 from password_manager import PasscodeManager
-from steganography import decode_image, encode_image
+from steganography import decode_image, encode_image, Constants
 
 
 class Config:
@@ -53,7 +53,7 @@ def main():
         encrypted_file_contents = None
 
     if encrypted_file_contents and Config.SHOULD_USE_STEGANOGRAPHY:
-        encrypted_file_contents = decode_image(encrypted_file_contents)
+        encrypted_file_contents = decode_image(encrypted_file_contents, Constants.STOP_CODE)
 
     wrong_count = 0
 
@@ -93,7 +93,7 @@ def main():
             with open(Config.BASE_IMAGE_FILENAME, "rb") as file:
                 png_image_bytes = file.read()
 
-            encrypted_data = encode_image(png_image_bytes, encrypted_data)
+            encrypted_data = encode_image(png_image_bytes, encrypted_data, Constants.STOP_CODE)
 
         with open(Config.OUTPUT_IMAGE_FILENAME if Config.SHOULD_USE_STEGANOGRAPHY else Config.OUTPUT_BYTES_FILENAME, "wb") as file:
             file.write(encrypted_data)
