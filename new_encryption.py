@@ -6,15 +6,17 @@ import os
 class WrongPasscodeException():
     pass
 
+
 def get_new_salt() -> bytes:
-    return os.urandom(16) 
+    return os.urandom(16)
+
 
 class Grid:
     WIDTH = 4
     SIZE = WIDTH ** 2
 
     S_BOX = [
-#       00     01    02    03    04    05    06    07    08    09    0a    0b    0c    0d    0e    0f
+        #       00     01    02    03    04    05    06    07    08    09    0a    0b    0c    0d    0e    0f
         [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76],  # 00
         [0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0],  # 10
         [0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15],  # 20
@@ -53,15 +55,14 @@ class Grid:
         [0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d],  # f0
     ]
 
-    def __init__(self, data):    
+    def __init__(self, data):
         data = data + ([0] * (len(data) - self.SIZE))
-        
+
         self.grid = [[0] * self.WIDTH for i in range(self.WIDTH)]
 
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
                 self.grid[i][j] = data[i + j * self.WIDTH]
-
 
     def _get_substation_byte(self, key: int, table: bytearray):
         # shift first 4 bits of byte over, leaving us with just the fist 4 bytes
@@ -72,62 +73,59 @@ class Grid:
 
         return table[row][col]
 
-
     def substitute_bytes(self, table):
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
                 self.grid[i][j] = self._get_substation_byte(self.grid[i][j], table)
-    
-    def rotate_row(self, row, n = 1):
+
+    def rotate_row(self, row, n=1):
         row = row[n:] + row[:n]
-    
+
     def shift_rows(self):
         for i, row in enumerate(self.grid):
-            self.grid[i] = self.rotate_row(row, i)             
-                
+            self.grid[i] = self.rotate_row(row, i)
+
     def add(a, b):
         return a ^ b
-    
+
     def multiply(a, b):
         result = 0
         shift_greater_than_255 = 0
-        
-        
-    
+
     def __repr__(self) -> str:
         values = []
         for row in self.grid:
             values.extend(row)
         return f"{self.__class__.__name__}({values})"
-    
-    def to_grid_string(self, indent = "", value_type = hex, vertical_sep = "\n", horizontal_sep = " ") -> str:
+
+    def to_grid_string(self, indent="", value_type=hex, vertical_sep="\n", horizontal_sep=" ") -> str:
         return vertical_sep.join(indent + (horizontal_sep.join(str(value_type(val)) for val in row)) for row in self.grid)
-    
+
     def __str__(self) -> str:
         return "AES_Grid(\n" + self.to_grid_string(indent="  ", value_type=hex) + "\n)"
-    
-    
+
+
 def make_grids_list(data: list[int]) -> list[Grid]:
     data = data + ([0] * (Grid.SIZE - len(data) % Grid.SIZE))
-    
+
     return [Grid(data[i:i+Grid.SIZE]) for i in range(0, len(data), Grid.SIZE)]
 
 
 def main():
     inputs = list(range(20))
-    
+
     grid = make_grids_list(inputs)[0]
-        
+
     print(grid)
-    
+
     grid.substitute_bytes(Grid.S_BOX)
-    
+
     print(grid)
-    
+
     grid.shift_rows()
-    
+
     print(grid)
-    
+
 
 if __name__ == "__main__":
     main()
