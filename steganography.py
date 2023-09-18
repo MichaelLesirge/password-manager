@@ -12,6 +12,7 @@ class InvalidPNGFile(ValueError):
 
 
 def get_png_body_position(image: bytes) -> tuple[int, int]:
+    """Get stand and end indexes of png body"""
     try:
         png_body_start = image.index(b'IDAT') + 4
         png_body_end = image.index(b'IEND')
@@ -22,6 +23,8 @@ def get_png_body_position(image: bytes) -> tuple[int, int]:
 
 
 def encode_image(base_png_image: bytes, secret_data: bytes, stop_code: bytes = b"###STOP###") -> bytes:
+    """Store secret data in png image. End secret data with stop code"""
+    
     # TODO check file for any stop codes that might appear in it and change them or change stop code
     
     image = bytearray(base_png_image)
@@ -37,14 +40,16 @@ def encode_image(base_png_image: bytes, secret_data: bytes, stop_code: bytes = b
 
     for i, bit in enumerate(secret_data_binary):
         byte_index = end_index - i - 8
-        # set last bit of byte to bit by setting last bit of image byte to zero then doing or with the bit
+        # set last bit of byte to bit by setting last bit of image byte to zero then doing OR with the bit
         image[byte_index] = (image[byte_index] & 0b11111110) | int(bit, base=2)
 
     return bytes(image)
 
 
-def decode_image(encoded_image: bytes, stop_code: bytes = b"###STOP###") -> bytes:
-    image = bytearray(encoded_image)
+def decode_image(encoded_png_image: bytes, stop_code: bytes = b"###STOP###") -> bytes:
+    """read secret data from encoded image until stop code is reached"""
+    
+    image = bytearray(encoded_png_image)
 
     start_index, end_index = get_png_body_position(image)
     byte_array = bytearray()
