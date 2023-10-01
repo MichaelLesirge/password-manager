@@ -6,15 +6,17 @@ import os
 class WrongPasscodeException():
     pass
 
+
 def get_new_salt() -> bytes:
-    return os.urandom(16) 
+    return os.urandom(16)
+
 
 class Grid:
     WIDTH = 4
     SIZE = WIDTH ** 2
 
     S_BOX = [
-#       00     01    02    03    04    05    06    07    08    09    0a    0b    0c    0d    0e    0f
+        #       00     01    02    03    04    05    06    07    08    09    0a    0b    0c    0d    0e    0f
         [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76],  # 00
         [0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0],  # 10
         [0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15],  # 20
@@ -77,7 +79,6 @@ class Grid:
         col = key & 0x0F # 0b00001111
 
         return table[row][col]
-
 
     def substitute_bytes(self, table):
         """SubBytes is the 1st step in AES. It substitute all values in grid using a given table, called an s-box."""
@@ -143,17 +144,17 @@ class Grid:
         for row in self.grid:
             values.extend(row)
         return f"{self.__class__.__name__}({values})"
-    
-    def to_grid_string(self, indent = "", value_type = hex, vertical_sep = "\n", horizontal_sep = " ") -> str:
+
+    def to_grid_string(self, indent="", value_type=hex, vertical_sep="\n", horizontal_sep=" ") -> str:
         return vertical_sep.join(indent + (horizontal_sep.join(str(value_type(val)) for val in row)) for row in self.grid)
-    
+
     def __str__(self) -> str:
         return "AES_Grid(\n" + self.to_grid_string(indent="  ", value_type=hex) + "\n)"
-    
-    
+
+
 def make_grids_list(data: list[int]) -> list[Grid]:
     data = data + ([0] * (Grid.SIZE - len(data) % Grid.SIZE))
-    
+
     return [Grid(data[i:i+Grid.SIZE]) for i in range(0, len(data), Grid.SIZE)]
 
 
