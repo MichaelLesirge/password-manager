@@ -55,7 +55,7 @@ class Grid:
         [0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d],  # f0
     ]
 
-    def __init__(self, data):
+    def __init__(self, data: list[int]):
         # pad data
         data = data + ([0] * (len(data) - self.SIZE))
         
@@ -69,7 +69,7 @@ class Grid:
                 self.grid[i][j] = data[i + j * self.WIDTH]
 
 
-    def _get_substitution_byte(self, key: int, table: bytearray):
+    def _get_substitution_byte(self, key: int, table: list[list[int]]) -> int:
         """finds matching byte in substitution table where first 4 bytes are the row and last 4 bytes are the column"""
         
         # shift first 4 bits of byte over, leaving us with just the first 4 bytes
@@ -80,20 +80,26 @@ class Grid:
 
         return table[row][col]
 
-    def substitute_bytes(self, table):
+    def substitute_bytes(self, table: list[list[int]]) -> int:
         """SubBytes is the 1st step in AES. It substitute all values in grid using a given table, called an s-box."""
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
                 self.grid[i][j] = self._get_substitution_byte(self.grid[i][j], table)
-    0b1
-    def _rotate_row(self, row, n = 1):
+    
+    def _rotate_row(self, row: list, n = 1) -> list:
         """shift rows to the right by n"""
         return row[n:] + row[:n]
     
     def shift_rows(self):
         """ShiftRows is the 2nd step in AES. It moves all rows to the left by n where n what row they are in."""
         for i, row in enumerate(self.grid):
-            self.grid[i] = self._rotate_row(row, i)             
+            self.grid[i] = self._rotate_row(row, i)     
+    
+    def mix_column():
+        pass
+    
+    def mix_columns(self):
+        """MixColumn is the 3rd step in AES"""  
     
     @staticmethod        
     def add(a, b):
@@ -158,9 +164,7 @@ def make_grids_list(data: list[int]) -> list[Grid]:
     return [Grid(data[i:i+Grid.SIZE]) for i in range(0, len(data), Grid.SIZE)]
 
 
-def test_field():
-    a, b, c = 1, 2, 3
-    
+def test_field(a = 1, b = 2, c = 3):    
     identify_for_addition = 0
     identify_for_multiplication = 1
     
