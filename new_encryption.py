@@ -53,45 +53,89 @@ class Grid:
         [0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d],  # f0
     ]
 
-    def __init__(self, data):    
+    def __init__(self, data):
+        # pad data
         data = data + ([0] * (len(data) - self.SIZE))
         
+        # create empty grid
         self.grid = [[0] * self.WIDTH for i in range(self.WIDTH)]
 
+        # fill in grid with data in column major order
+        # column major order means it moves top to bottom and then to the right instead of left to right and then down 
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
                 self.grid[i][j] = data[i + j * self.WIDTH]
 
 
-    def _get_substation_byte(self, key: int, table: bytearray):
-        # shift first 4 bits of byte over, leaving us with just the fist 4 bytes
+    def _get_substitution_byte(self, key: int, table: bytearray):
+        """finds matching byte in substitution table where first 4 bytes are the row and last 4 bytes are the column"""
+        
+        # shift first 4 bits of byte over, leaving us with just the first 4 bytes
         row = key >> 4
 
         # set the first 4 bytes to 0 by and-ing them with 0, leaving just the last 4 bytes
-        col = key & 0x0F
+        col = key & 0x0F # 0b00001111
 
         return table[row][col]
 
 
     def substitute_bytes(self, table):
+        """SubBytes is the 1st step in AES. It substitute all values in grid using a given table, called an s-box."""
         for i in range(self.WIDTH):
             for j in range(self.WIDTH):
-                self.grid[i][j] = self._get_substation_byte(self.grid[i][j], table)
-    
-    def rotate_row(self, row, n = 1):
-        row = row[n:] + row[:n]
+                self.grid[i][j] = self._get_substitution_byte(self.grid[i][j], table)
+    0b1
+    def _rotate_row(self, row, n = 1):
+        """shift rows to the right by n"""
+        return row[n:] + row[:n]
     
     def shift_rows(self):
+        """ShiftRows is the 2nd step in AES. It moves all rows to the left by n where n what row they are in."""
         for i, row in enumerate(self.grid):
-            self.grid[i] = self.rotate_row(row, i)             
-                
+            self.grid[i] = self._rotate_row(row, i)             
+    
+    @staticmethod        
     def add(a, b):
+        """Addition in the finite field GF(2^8). It is just the bitwise XOR (exclusive or) operator"""
+        
+        # exclusive or is just or but it has to be or but exclusive.
+        # 0 ^ 0 = 0
+        # 0 ^ 1 = 1
+        # 1 ^ 0 = 1
+        # 1 ^ 1 = 0
         return a ^ b
     
+    @staticmethod
     def multiply(a, b):
-        result = 0
-        shift_greater_than_255 = 0
+        """Multiplication in the finite field GF(2^8)"""
         
+        result = 0
+        
+        for i in range(8):
+            # If the B's LSB (least significant bit, farthest bit to the right) is set then we XOR the result with A.
+            # This is the same as B & 0b00000001.
+            # This adds A to the final result anytime the final bit of B is 1.
+            if b & 1: result ^= a
+            
+            # Keep track of whether the MSB (most significant bit, farthest bit to the left) is set to 1.
+            # This is the same as B & 0b10000000.
+            # If it is that means we will overflow the field when will shift the bits to the left.
+            will_overflow = a & 128 # 2**7 
+            
+            # Shift the A's bits to the left.
+            # This is the same as multiplying A by 2.
+            # This means next time a is added to be it is twice as much 
+            a <<= 1
+            
+            # If it overflows subtract a "reducing polynomial"
+            if will_overflow: a ^= 0x11b
+            
+            # Shift B down in order to look at the next LSB.
+            # This is the same as dividing B by 2
+            # This is worth twice as much in the multiplication
+            b >>= 1
+                  
+        return result
         
     
     def __repr__(self) -> str:
@@ -113,20 +157,44 @@ def make_grids_list(data: list[int]) -> list[Grid]:
     return [Grid(data[i:i+Grid.SIZE]) for i in range(0, len(data), Grid.SIZE)]
 
 
+def test_field():
+    a, b, c = 1, 2, 3
+    
+    identify_for_addition = 0
+    identify_for_multiplication = 1
+    
+    # Associativity
+    assert Grid.add(1, Grid.add(b, c)) == Grid.add(Grid.add(a, b), c)
+    assert Grid.multiply(1, Grid.multiply(b, c)) == Grid.multiply(Grid.multiply(a, b), c)
+    
+    # Commutativity
+    assert Grid.add(a, b) == Grid.add(b, a)
+    assert Grid.multiply(a, b) == Grid.multiply(b, a)
+    
+    # Identity
+    assert Grid.add(a, identify_for_addition) == a
+    assert Grid.multiply(a, identify_for_multiplication) == a
+    
+    # Inverse
+    assert Grid.add(a, a) == identify_for_addition
+    assert Grid.multiply(a, a) == identify_for_multiplication
+    
+    # Distributivity
+    assert Grid.multiply(a, Grid.add(b, c)) == Grid.add(Grid.multiply(a, b), Grid.multiply(a, c))
+
 def main():
+    test_field()
+    
     inputs = list(range(20))
     
-    grid = make_grids_list(inputs)[0]
-        
-    print(grid)
+    grid = make_grids_list(inputs)[0]  
+    print(grid.to_grid_string(value_type=int), "\n")
     
-    grid.substitute_bytes(Grid.S_BOX)
-    
-    print(grid)
+    # grid.substitute_bytes(Grid.S_BOX)
+    # print(grid.to_grid_string(value_type=int), "\n")
     
     grid.shift_rows()
-    
-    print(grid)
+    print(grid.to_grid_string(value_type=int), "\n")
     
 
 if __name__ == "__main__":
