@@ -55,6 +55,13 @@ class Grid:
         [0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d],  # f0
     ]
 
+    MIX_COLUMN_MATRIX_MULTIPLIER = [
+        [2, 3, 1, 1],
+        [1, 2, 3, 1],
+        [1, 1, 2, 3],
+        [3, 1, 1, 2],
+    ]
+    
     def __init__(self, data: list[int]):
         # pad data
         data = data + ([0] * (len(data) - self.SIZE))
@@ -95,13 +102,24 @@ class Grid:
         for i, row in enumerate(self.grid):
             self.grid[i] = self._rotate_row(row, i)     
     
-    def mix_column():
-        pass
+    def mix_column(self, column: list):
+        return [
+            self.multiply(0x02, column[0]) ^ self.multiply(0x03, column[1]) ^ column[2] ^ column[3],
+            column[0] ^ self.multiply(0x02, column[1]) ^ self.multiply(0x03, column[2]) ^ column[3],
+            column[0] ^ column[1] ^ self.multiply(0x02, column[2]) ^ self.multiply(0x03, column[3]),
+            self.multiply(0x03, column[0]) ^ column[1] ^ column[2] ^ self.multiply(0x02, column[3]),
+        ]
     
     def mix_columns(self):
-        """MixColumn is the 3rd step in AES"""  
+        """MixColumn is the 3rd step in AES"""
+        for col in range(self.WIDTH):
+            new_column = self.mix_column([self.grid[row][col] for row in range(self.WIDTH)])
+            for row, value in enumerate(new_column):
+                self.grid[row][col] = value
+                
+
     
-    @staticmethod        
+    @staticmethod
     def add(a, b):
         """Addition in the finite field GF(2^8). It is just the bitwise XOR (exclusive or) operator"""
         
@@ -157,6 +175,8 @@ class Grid:
     def __str__(self) -> str:
         return "AES_Grid(\n" + self.to_grid_string(indent="  ", value_type=hex) + "\n)"
 
+class Key:
+    pass
 
 def make_grids_list(data: list[int]) -> list[Grid]:
     data = data + ([0] * (Grid.SIZE - len(data) % Grid.SIZE))
@@ -164,13 +184,13 @@ def make_grids_list(data: list[int]) -> list[Grid]:
     return [Grid(data[i:i+Grid.SIZE]) for i in range(0, len(data), Grid.SIZE)]
 
 
-def test_field(a = 1, b = 2, c = 3):    
+def test_finite_field(a = 1, b = 2, c = 3):    
     identify_for_addition = 0
     identify_for_multiplication = 1
     
     # Associativity
-    assert Grid.add(1, Grid.add(b, c)) == Grid.add(Grid.add(a, b), c)
-    assert Grid.multiply(1, Grid.multiply(b, c)) == Grid.multiply(Grid.multiply(a, b), c)
+    assert Grid.add(a, Grid.add(b, c)) == Grid.add(Grid.add(a, b), c)
+    assert Grid.multiply(a, Grid.multiply(b, c)) == Grid.multiply(Grid.multiply(a, b), c)
     
     # Commutativity
     assert Grid.add(a, b) == Grid.add(b, a)
@@ -181,26 +201,27 @@ def test_field(a = 1, b = 2, c = 3):
     assert Grid.multiply(a, identify_for_multiplication) == a
     
     # Inverse
-    assert Grid.add(a, a) == identify_for_addition
-    assert Grid.multiply(a, a) == identify_for_multiplication
+    assert Grid.add(a, a | a) == identify_for_addition
+    assert any(Grid.multiply(a, i) == identify_for_multiplication for i in range(0, 256))
     
     # Distributivity
     assert Grid.multiply(a, Grid.add(b, c)) == Grid.add(Grid.multiply(a, b), Grid.multiply(a, c))
 
 def main():
-    test_field()
-    
     inputs = list(range(20))
     
     grid = make_grids_list(inputs)[0]  
     print(grid.to_grid_string(value_type=int), "\n")
     
-    # grid.substitute_bytes(Grid.S_BOX)
-    # print(grid.to_grid_string(value_type=int), "\n")
+    grid.substitute_bytes(Grid.S_BOX)
+    print(grid.to_grid_string(value_type=int), "\n")
     
     grid.shift_rows()
     print(grid.to_grid_string(value_type=int), "\n")
     
 
 if __name__ == "__main__":
+    test_finite_field(10, 3, 6)
+    test_finite_field(6, 8, 1)
+    test_finite_field(100, 47, 204)
     main()
