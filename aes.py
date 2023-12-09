@@ -4,6 +4,13 @@ BOX_AREA = BOX_SIDE ** 2
 
 ROUNDS = 10
 
+"""
+TODO
+https://en.wikipedia.org/wiki/Authenticated_encryption
+https://en.wikipedia.org/wiki/Padding_(cryptography)
+https://en.wikipedia.org/wiki/Initialization_vector
+"""
+
 def make_grid(s: bytes, should_pad: bool = True) -> list[list[int]]:
     if should_pad: s += type(s)([0] * (BOX_AREA - len(s)))
     return [[s[i + j*BOX_SIDE] for j in range(BOX_SIDE)] for i in range(BOX_SIDE)]
@@ -210,5 +217,5 @@ def decrypt(key: bytes, data: bytes) -> bytes:
 
     return bytes(int_stream)
 
-a = encrypt(b"secret", b"Hello")
-print(repr(decrypt(b"secret", a).decode().strip()))
+# a = encrypt(b"secret", b"Hello")
+# print(repr(decrypt(b"secret", a).decode()))
