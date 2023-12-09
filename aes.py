@@ -5,7 +5,7 @@ BOX_AREA = BOX_SIDE ** 2
 ROUNDS = 10
 
 def make_grid(s: bytes, should_pad: bool = True) -> list[list[int]]:
-    s += type(s)([0] * (BOX_AREA - len(s)))
+    if should_pad: s += type(s)([0] * (BOX_AREA - len(s)))
     return [[s[i + j*BOX_SIDE] for j in range(BOX_SIDE)] for i in range(BOX_SIDE)]
     
 
@@ -151,9 +151,19 @@ def mix_column(column: list[int]) -> list[int]:
 def add_sub_key(block_grid: list[list[int]], key_grid: list[list[int]]) -> list[list[int]]:
     return [[block_grid[i][j] ^ key_grid[i][j] for j in range(BOX_SIDE)] for i in range(BOX_SIDE)]
             
-def extract_key_for_round(expanded_key: list[list[int]], round: int):
+def extract_key_for_round(expanded_key: list[list[int]], round: int) -> list[list[int]]:
     row_index = round * BOX_SIDE
     return [row[row_index : row_index + BOX_SIDE] for row in expanded_key]
+
+def encrypt_grid_round(round_key: list[list[int]], grid: list[list[int]], final = False) -> list[list[int]]:
+    
+        grid = [[s_box_lookup(val) for val in row] for row in grid] # sub bytes
+        grid = [rotate_row_left(grid[i], i) for i in range(BOX_SIDE)] # shift rows
+        if not final: grid = mix_columns(grid) # mix columns
+        grid = add_sub_key(grid, round_key) # add round key
+        
+        return grid
+
 
 def encrypt(key: bytes, data: bytes) -> bytes:    
     grids = break_in_grids_of_16(data, should_pad=True)
@@ -161,78 +171,37 @@ def encrypt(key: bytes, data: bytes) -> bytes:
     expanded_key = expand_key(key, 11)
 
     round_key = extract_key_for_round(expanded_key, 0)
-
     grids = [add_sub_key(grid, round_key) for grid in grids]
 
-    for round in range(1, ROUNDS):
-        temp_grids = []
-        
+    for round in range(1, ROUNDS+1):      
         round_key = extract_key_for_round(expanded_key, round)
-        for grid in grids:
-            
-            sub_bytes_step = [[s_box_lookup(val) for val in row] for row in grid]
-            shift_rows_step = [rotate_row_left(sub_bytes_step[i], i) for i in range(BOX_SIDE)]
-            mix_column_step = mix_columns(shift_rows_step)
-                   
-            add_sub_key_step = add_sub_key(mix_column_step, round_key)
-            temp_grids.append(add_sub_key_step)
-
-        grids = temp_grids
-
-    temp_grids = []
-    round_key = extract_key_for_round(expanded_key, ROUNDS)
-
-    for grid in grids:
-        sub_bytes_step = [[s_box_lookup(val) for val in row] for row in grid]
-        shift_rows_step = [rotate_row_left(sub_bytes_step[i], i) for i in range(BOX_SIDE)]
-        add_sub_key_step = add_sub_key(shift_rows_step, round_key)
-        temp_grids.append(add_sub_key_step)
-
-    grids = temp_grids
+        grids = [encrypt_grid_round(round_key, grid, final = (round == ROUNDS)) for grid in grids]
 
     int_stream = [
         grid[row][column] for grid in grids for column in range(BOX_SIDE) for row in range(BOX_SIDE)
     ]
     
     return bytes(int_stream)
+
+def decrypt_grid_round(round_key: list[list[int]], grid: list[list[int]], final = False) -> list[list[int]]:
+    
+    grid = add_sub_key(grid, round_key) # add round key
+    for i in range((not final) and 3): grid = mix_columns(grid) # mix columns
+    grid = [rotate_row_left(grid[i], -1 * i) for i in range(BOX_SIDE)] # shift rows
+    grid = [[s_box_lookup(val, REVERSE_AES_S_BOX) for val in row] for row in grid] # sub bytes
+    
+    return grid
 
 def decrypt(key: bytes, data: bytes) -> bytes:
-
     grids = break_in_grids_of_16(data)
-    expanded_key = expand_key(key, 11)
-    round_key = extract_key_for_round(expanded_key, 10)
-
-    temp_grids = []
-
-    for grid in grids:
-
-        add_sub_key_step = add_sub_key(grid, round_key)
-        shift_rows_step = [rotate_row_left(add_sub_key_step[i], -i) for i in range(BOX_SIDE)]
-        sub_bytes_step = [[s_box_lookup(val, REVERSE_AES_S_BOX) for val in row] for row in shift_rows_step]
-        temp_grids.append(sub_bytes_step)
-
-    grids = temp_grids
-
-    for round in range(ROUNDS-1, 0, -1):
-        temp_grids = []
-
-        round_key = extract_key_for_round(expanded_key, round)
-        for grid in grids:
-            add_sub_key_step = add_sub_key(grid, round_key)
-
-            mix_column_step = mix_columns(add_sub_key_step)
-            mix_column_step = mix_columns(mix_column_step)
-            mix_column_step = mix_columns(mix_column_step)
-            shift_rows_step = [rotate_row_left(mix_column_step[i], -1 * i) for i in range(BOX_SIDE)]
-            sub_bytes_step = [[s_box_lookup(val, REVERSE_AES_S_BOX) for val in row] for row in shift_rows_step]
-            temp_grids.append(sub_bytes_step)
-
-        grids = temp_grids
     
-    temp_grids = []
+    expanded_key = expand_key(key, 11)
 
+    for round in range(ROUNDS, 0, -1):
+        round_key = extract_key_for_round(expanded_key, round)   
+        grids = [decrypt_grid_round(round_key, grid, final=(round == ROUNDS)) for grid in grids]
+        
     round_key = extract_key_for_round(expanded_key, 0)
-
     grids = [add_sub_key(grid, round_key) for grid in grids]
     
     int_stream = [
@@ -241,7 +210,5 @@ def decrypt(key: bytes, data: bytes) -> bytes:
 
     return bytes(int_stream)
 
-data = encrypt("code".encode(), "Secret message shhhhh 123".encode())
-print(data)
-output = decrypt("code".encode(), data).decode()
-print(output)
+a = encrypt(b"secret", b"Hello")
+print(repr(decrypt(b"secret", a).decode().strip()))
