@@ -1,6 +1,4 @@
 # password-manager
-My personal super simple password manager program. I think it's probably secure but most definitely don't trust it. Its more for fun than anything else.
+My super simple CLI password manager. Just for learning about cryptography and steganography, don't actually save your passwords here.
 
 The steganography bit is more just for fun but maybe you want to upload it somewhere potentially public and hide it a bit more or something.
-
-Don't take it to seriously. 
