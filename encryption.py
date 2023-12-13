@@ -1,44 +1,31 @@
-import base64
 import os
 import pickle
 
-from cryptography import fernet
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from aes import encrypt, decrypt
 
-class WrongPasscodeException(fernet.InvalidToken): pass
+class WrongPasscodeException(Exception): pass
 
 def get_new_salt() -> bytes:
     return os.urandom(16)
 
-"""At some point I want to try and implement some sort of actually semi secure encryption myself but for now I am justing using this"""
-
 def generate_key(passcode: str, salt: bytes) -> bytes:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=480000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(passcode.encode()))
-    return key
+    return passcode.encode() + salt
 
 
 def encrypt_str(data: str, key: bytes) -> bytes:
-    return base64.urlsafe_b64encode(Fernet(key).encrypt(data.encode()))
+    return encrypt(key, data.encode())
 
 
 def decrypt_str(encrypted_data: bytes, key: bytes) -> str:
-    return Fernet(key).decrypt(base64.urlsafe_b64decode(encrypted_data)).decode()
+    return decrypt(key, encrypted_data).decode()
 
 
 def encrypt_dict(obj: dict, key: bytes) -> bytes:
-    return Fernet(key).encrypt(pickle.dumps(obj, pickle.HIGHEST_PROTOCOL))
+    return encrypt(key, pickle.dumps(obj))
 
 
 def decrypt_dict(encrypted_obj: bytes, key: bytes) -> dict:
-    return pickle.loads(Fernet(key).decrypt(encrypted_obj))
+    return pickle.loads(decrypt(key, encrypted_obj))
 
 
 def main():
