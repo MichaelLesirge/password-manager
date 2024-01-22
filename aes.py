@@ -6,13 +6,16 @@ BOX_AREA = BOX_SIDE ** 2
 ROUNDS = 10
 
 """
-DONE
+DONE:
 https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
 
-TODO
+Use:
 https://en.wikipedia.org/wiki/Authenticated_encryption
 https://en.wikipedia.org/wiki/Padding_(cryptography)
 https://en.wikipedia.org/wiki/Initialization_vector
+
+Extra:
+Try to calculate https://en.wikipedia.org/wiki/Rijndael_S-box
 """
 
 def make_grid(s: bytes, should_pad: bool = True) -> list[list[int]]:
@@ -67,7 +70,7 @@ REVERSE_AES_S_BOX = [
 ]
 
 def s_box_lookup(byte: int, s_box: list[list[int]] = AES_S_BOX) -> int:
-    """Look up byte in specified s_box"""
+    """Look up byte in specified substitution box"""
     
     # shift first 4 bits of byte over, leaving us with just the first 4 bytes
     row = byte >> 4
@@ -77,31 +80,33 @@ def s_box_lookup(byte: int, s_box: list[list[int]] = AES_S_BOX) -> int:
     
     return s_box[row][col]
 
-def make_r_con(rounds: int) -> list[list[int]]:
-    r_con_value = 1
-    padding = [0] * (BOX_SIDE-1)
-    return [[r_con_value := gf_multiply(r_con_value, 2)] + padding for i in range(rounds)]
+def make_round_constant(total_rounds: int) -> list[list[int]]:
+    """
+    Make round constant values based on the total number of rounds.
+    Should follow this pattern (in hex): 01, 02, 04, 08, 10, 20, 40, 80, 1B, 36
+    """
+    rcon = [1]
+    for i in range(total_rounds):
+        rcon.append(gf_multiply(rcon[-1], 2))
+    return rcon
         
-
-def expand_key(key: bytes, rounds: int) -> list[list[int]]:
-    r_con = make_r_con(rounds)
+def expand_key(key: bytes, total_rounds: int) -> list[list[int]]:
+    rcon = make_round_constant(total_rounds)
     
     key_grid = make_grid(key)
 
-    for round in range(rounds):
+    for round in range(total_rounds):
         last_column = [row[-1] for row in key_grid]
-        last_column_rotate_step = rotate_row_left(last_column)
-        last_column_sbox_step = [s_box_lookup(b) for b in last_column_rotate_step]
-        last_column_rcon_step = [last_column_sbox_step[i] ^ r_con[round][i] for i in range(len(last_column_rotate_step))]
+        last_column = rotate_row_left(last_column) # rotate row step
+        last_column = [s_box_lookup(b) for b in last_column] # substitution step
+        last_column[0] ^= rcon[round] # rcon step
+        
+        for column_value, row in zip(last_column, key_grid):
+            row.append(column_value ^ row[round*BOX_SIDE])
 
-        for r in range(BOX_SIDE):
-            key_grid[r] += bytes([last_column_rcon_step[r] ^ key_grid[r][round*BOX_SIDE]])
-
-        for i, grid in enumerate(key_grid):
-            for j in range(BOX_SIDE):
-                row_start_index = round*BOX_SIDE + j
-                key_grid[i] += bytes([grid[row_start_index] ^ grid[row_start_index + BOX_SIDE]])
-
+        for row in key_grid:
+            row.extend([row[round * BOX_SIDE + j] ^ row[round * (BOX_SIDE + 1) + j] for j in range(BOX_SIDE)])
+            
     return key_grid
 
 def rotate_row_left(row: list, n: int = 1) -> list:
@@ -182,8 +187,8 @@ def add_sub_key(block_grid: list[list[int]], key_grid: list[list[int]]) -> list[
     return [[block_grid[i][j] ^ key_grid[i][j] for j in range(BOX_SIDE)] for i in range(BOX_SIDE)]
             
 def extract_key_for_round(expanded_key: list[list[int]], round: int) -> list[list[int]]:
-    row_index = round * BOX_SIDE
-    return [row[row_index : row_index + BOX_SIDE] for row in expanded_key]
+    col_index = round * BOX_SIDE
+    return [row[col_index : col_index + BOX_SIDE] for row in expanded_key]
 
 def encrypt_grid_round(round_key: list[list[int]], grid: list[list[int]], final = False) -> list[list[int]]:
     grid = [[s_box_lookup(val) for val in row] for row in grid] # SubBytes
@@ -239,5 +244,93 @@ def decrypt(key: bytes, data: bytes) -> bytes:
 
     return bytes(int_stream)
 
-a = encrypt(b"secret", b"Hello this is a secret message 1234")
-print(decrypt(b"secret", a).decode())
+# --- MAIN ---
+
+def main() -> None:
+    going = True
+    
+    leave_codes = ["q", "exit"]
+    
+    
+    print("""
+         █████  ███████ ███████     ███████ ███    ██  ██████ ██████  ██    ██ ██████  ████████ 
+        ██   ██ ██      ██          ██      ████   ██ ██      ██   ██  ██  ██  ██   ██    ██    
+        ███████ █████   ███████     █████   ██ ██  ██ ██      ██████    ████   ██████     ██    
+        ██   ██ ██           ██     ██      ██  ██ ██ ██      ██   ██    ██    ██         ██    
+        ██   ██ ███████ ███████     ███████ ██   ████  ██████ ██   ██    ██    ██         ██                                                                                    
+        """)
+    
+    print("\033[0;32m")
+    
+    example_password = "my password"
+    example_message = "a secret message"
+    
+    print(f'AES> encrypt "{example_password}" "{example_message}"')
+    example_encrypted = encrypt( b"my password", b"a secret message")
+    print(bytes_to_str(example_encrypted))
+    
+    print()
+    
+    example_decrypted = decrypt(str_to_bytes(example_password), example_encrypted)
+    print(f'AES> decrypt "{example_password}" {bytes_to_str(example_encrypted)}')
+    print(bytes_to_str(example_decrypted))
+    
+    assert bytes_to_str(example_decrypted) == example_message, "Test failed"
+    
+    while going:
+        print()
+        user_input = input("AES> ").lower().strip()
+        
+        if user_input in leave_codes: return
+        
+        split_input = split_string_with_quotes(user_input)
+        
+        if len(split_input) != 3:
+            print("Error: Please enter mode, key, and data")
+            continue
+            
+        mode, key, text = split_input
+        
+        key = str_to_bytes(key)
+        text = str_to_bytes(text)
+                
+        if mode[0] == "e":
+            output = encrypt(key, text)
+        elif mode[0] == "d":
+            output = decrypt(key, text)
+        else:
+            print("Error: please choose either encrypt or decrypt for the mode")
+            continue
+        
+        print([key, text, output])
+    
+        print(bytes_to_str(output))
+
+def str_to_bytes(s: str) -> bytes:
+    return eval("b'" + s + "'")
+
+def bytes_to_str(b: bytes) -> str:
+    return str(b).lstrip("b'").rstrip("'")
+
+def split_string_with_quotes(input_string: str, sep = " ") -> list[str]:
+    result = []
+    current_token = ""
+    inside_quotes = False
+
+    for char in input_string:
+        if char == sep and not inside_quotes:
+            if current_token:
+                result.append(current_token)
+                current_token = ""
+        elif ord(char) in [39, 34]:
+            inside_quotes = not inside_quotes
+        else:
+            current_token += char
+
+    if current_token:
+        result.append(current_token)
+
+    return result     
+            
+if __name__ == "__main__":
+    main()
