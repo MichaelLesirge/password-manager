@@ -247,6 +247,10 @@ def decrypt(key: bytes, data: bytes) -> bytes:
 # --- MAIN ---
 
 def main() -> None:
+    
+    # base64 just for command line ease of use
+    import base64
+    
     going = True
     
     leave_codes = ["q", "exit"]
@@ -258,28 +262,26 @@ def main() -> None:
         ███████ █████   ███████     █████   ██ ██  ██ ██      ██████    ████   ██████     ██    
         ██   ██ ██           ██     ██      ██  ██ ██ ██      ██   ██    ██    ██         ██    
         ██   ██ ███████ ███████     ███████ ██   ████  ██████ ██   ██    ██    ██         ██                                                                                    
-        """)
+        """, end="")
     
-    print("\033[0;32m")
+    print("\033[0;32m", end="")
     
     example_password = "my password"
     example_message = "a secret message"
     
-    print(f'AES> encrypt "{example_password}" "{example_message}"')
-    example_encrypted = encrypt( b"my password", b"a secret message")
-    print(bytes_to_str(example_encrypted))
+    print(f'\nAES> encrypt "{example_password}" "{example_message}"')
+    example_encrypted = base64.b64encode(encrypt(example_password.encode(), example_message.encode()))
+    print(example_encrypted.decode())
+        
+    example_decrypted = decrypt(example_password.encode(), base64.b64decode(example_encrypted))
+    print(f'\nAES> decrypt "{example_password}" {example_encrypted}')
+    print(example_decrypted.decode())
     
-    print()
-    
-    example_decrypted = decrypt(str_to_bytes(example_password), example_encrypted)
-    print(f'AES> decrypt "{example_password}" {bytes_to_str(example_encrypted)}')
-    print(bytes_to_str(example_decrypted))
-    
-    assert bytes_to_str(example_decrypted) == example_message, "Test failed"
+    assert example_decrypted.decode() == example_message, "Test failed"
     
     while going:
         print()
-        user_input = input("AES> ").lower().strip()
+        user_input = input("AES> ").strip()
         
         if user_input in leave_codes: return
         
@@ -289,28 +291,21 @@ def main() -> None:
             print("Error: Please enter mode, key, and data")
             continue
             
-        mode, key, text = split_input
+        mode, key, body = split_input
         
-        key = str_to_bytes(key)
-        text = str_to_bytes(text)
-                
-        if mode[0] == "e":
-            output = encrypt(key, text)
-        elif mode[0] == "d":
-            output = decrypt(key, text)
+        if mode[0].lower() == "e":
+            output = base64.b64encode(encrypt(key.encode(), body.encode()))
+        elif mode[0].lower() == "d":
+            output = decrypt(key.encode(), base64.b64decode(eval("b'" + body + "'")))
         else:
             print("Error: please choose either encrypt or decrypt for the mode")
             continue
         
-        print([key, text, output])
-    
-        print(bytes_to_str(output))
-
-def str_to_bytes(s: str) -> bytes:
-    return eval("b'" + s + "'")
-
-def bytes_to_str(b: bytes) -> str:
-    return str(b).lstrip("b'").rstrip("'")
+        try:
+            print(output.decode())
+        except UnicodeDecodeError:
+            print("Decode failed, do you have the write key?")
+            
 
 def split_string_with_quotes(input_string: str, sep = " ") -> list[str]:
     result = []
