@@ -1,9 +1,9 @@
 # password-manager
-My super simple CLI password manager. Just for learning about cryptography and steganography, don't actually save your passwords here.
+My super simple CLI password manager. Just for learning about cryptography and steganography, don't actually save your passwords here lol. Implemented the AES encryption algorithm and LSB steganography for PNGs.
 
 ## AES Encryption | [aes.py](https://github.com/MichaelLesirge/password-manager/blob/main/aes.py)
 <img align="right" alt="Round in AES" src="https://github.com/michael-lesirge/password-manager/assets/100492377/e42e6649-428c-450a-bbca-b60609bf0eac" width = 200>
-<p>This project focuses on the implementation of Advanced Encryption Standard (AES) encryption. AES is a widely used symmetric encryption algorithm, meaning you use one key to encrypt and decrypt the data. AES is a iterated block cipher, meaning that it encrypts and decrypts a block of data by the iteration or round of a specific transformation. I implement it using Python 3 with the goal of getting a better understanding of cryptography after being inspired by a Computerphile video on it.</p>
+<p>This project focuses on the implementation of Advanced Encryption Standard (AES) encryption. AES is a widely used symmetric encryption algorithm, meaning you use one key to encrypt and decrypt the data. AES is a iterated block cipher, meaning that it encrypts and decrypts a block of data by the iteration or round of a specific transformation. I implemented it using Python 3 with the goal of getting a better understanding of cryptography after being inspired by a Computerphile video on it.</p>
 <p>I made my implementation from scratch using zero imports. I also tried to avoid using hardcoded lookup tables and instead tried to compute the values myself so I actually understood where those values came from, and why they needed to be that.</p>
 
 <a target="_blank" href="https://www.youtube.com/watch?v=O4xNJsjtN6E">AES Encryption Video</a>
