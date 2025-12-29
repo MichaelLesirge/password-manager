@@ -1,5 +1,5 @@
 # password-manager
-My super simple CLI password manager. Just for learning about cryptography and steganography, don't actually save your passwords here lol. Implemented the AES encryption algorithm and LSB steganography for PNGs.
+My super simple CLI password manager. Just for learning about cryptography and steganography. Implemented the AES encryption algorithm and LSB steganography for PNGs.
 
 ## AES Encryption | [aes.py](https://github.com/MichaelLesirge/password-manager/blob/main/aes.py)
 <img align="right" alt="Round in AES" src="https://github.com/michael-lesirge/password-manager/assets/100492377/e42e6649-428c-450a-bbca-b60609bf0eac" width = 200>
